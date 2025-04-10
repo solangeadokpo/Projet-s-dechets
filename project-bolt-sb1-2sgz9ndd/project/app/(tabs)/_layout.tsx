@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { MapPin, User, ChartBar as BarChart3 } from 'lucide-react-native';
+import { MapPin, User, ChartBar as BarChart3, Truck } from 'lucide-react-native';
 
 export default function TabLayout() {
   return (
@@ -48,6 +48,17 @@ export default function TabLayout() {
           ),
         }}
       />
+          <Tabs.Screen
+          name="tracking"
+          options={{
+            title: 'Suivi',
+            tabBarIcon: ({ color, size }) => (
+              <Truck size={size} color={color} />
+            ),
+          }}
+/>
     </Tabs>
+
+
   );
 }

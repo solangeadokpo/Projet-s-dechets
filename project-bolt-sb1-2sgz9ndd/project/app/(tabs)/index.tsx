@@ -1,12 +1,15 @@
 import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, Alert } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { Send } from 'lucide-react-native';
+import { supabase } from '@/lib/supabase'; // Import ajouté
 
 export default function CollectScreen() {
   const [location, setLocation] = useState(null);
   const [errorMsg, setErrorMsg] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState(null);
 
   useEffect(() => {
     (async () => {
@@ -22,37 +25,45 @@ export default function CollectScreen() {
   }, []);
 
   const handleCollectRequest = async () => {
-  if (location) {
-    try {
-      // Récupère l'ID de l'utilisateur connecté
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        console.error('Utilisateur non connecté');
-        return;
-      }
-      
-      // Insertion de la demande de collecte
-      const { error } = await supabase
-        .from('collection_requests')
-        .insert({
-          user_id: user.id,
-          latitude: location.coords.latitude,
-          longitude: location.coords.longitude,
-          status: 'pending'
-        });
+    if (location) {
+      try {
+        setLoading(true);
         
-      if (error) {
-        console.error('Erreur lors de la demande:', error.message);
-      } else {
-        // Afficher un message de succès ou une notification
-        alert('Demande de collecte envoyée avec succès!');
+        // Récupère l'ID de l'utilisateur connecté
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (!user) {
+          Alert.alert("Erreur", "Utilisateur non connecté");
+          return;
+        }
+        
+        // Insertion de la demande de collecte
+        const { error } = await supabase
+          .from('collection_requests')
+          .insert({
+            user_id: user.id,
+            latitude: location.coords.latitude,
+            longitude: location.coords.longitude,
+            status: 'pending'
+          });
+          
+        if (error) {
+          Alert.alert("Erreur", "Erreur lors de la demande: " + error.message);
+        } else {
+          setSuccessMessage("Votre demande a été envoyée avec succès. Un éboueur viendra bientôt collecter vos déchets.");
+          Alert.alert(
+            "Succès", 
+            "Demande de collecte envoyée avec succès!",
+            [{ text: "OK" }]
+          );
+        }
+      } catch (err) {
+        Alert.alert("Erreur", "Erreur lors de la demande: " + err.message);
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      console.error('Erreur lors de la demande:', err);
     }
-  }
-};
+  };
 
   return (
     <View style={styles.container}>
@@ -85,9 +96,20 @@ export default function CollectScreen() {
         </View>
       )}
 
-      <TouchableOpacity style={styles.button} onPress={handleCollectRequest}>
+      {successMessage && (
+        <View style={styles.successContainer}>
+          <Text style={styles.successText}>{successMessage}</Text>
+        </View>
+      )}
+
+      <TouchableOpacity 
+        style={[styles.button, loading && styles.buttonDisabled]} 
+        onPress={handleCollectRequest}
+        disabled={loading || !location}>
         <Send color="#FFFFFF" size={24} />
-        <Text style={styles.buttonText}>Demander une collecte</Text>
+        <Text style={styles.buttonText}>
+          {loading ? 'Envoi en cours...' : 'Demander une collecte'}
+        </Text>
       </TouchableOpacity>
     </View>
   );
@@ -121,6 +143,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666666',
   },
+  successContainer: {
+    backgroundColor: '#ECFDF5',
+    padding: 16,
+    margin: 20,
+    borderRadius: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: '#4CAF50',
+  },
+  successText: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 14,
+    color: '#2D4B34',
+  },
   button: {
     backgroundColor: '#4CAF50',
     flexDirection: 'row',
@@ -130,6 +165,9 @@ const styles = StyleSheet.create({
     margin: 20,
     borderRadius: 12,
     gap: 8,
+  },
+  buttonDisabled: {
+    opacity: 0.6,
   },
   buttonText: {
     color: '#FFFFFF',

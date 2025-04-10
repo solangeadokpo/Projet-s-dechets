@@ -2,50 +2,67 @@ import { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Image, ScrollView } from 'react-native';
 import { router, Link } from 'expo-router';
 import { supabase } from '@/lib/supabase';
+import { Picker } from '@react-native-picker/picker';
 
 export default function Signup() {
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [role, setRole] = useState('user'); // Valeur par défaut: utilisateur normal
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-const handleSignup = async () => {
-  try {
-    setLoading(true);
-    setError(null);
-    
-    // Vérifier si tous les champs sont remplis
-    if (!fullName || !phone || !email || !password) {
-      setError("Veuillez remplir tous les champs");
-      return;
-    }
-
-    // Inscription avec Supabase Auth (le trigger créera automatiquement le profil)
-    const { error: signUpError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          full_name: fullName,
-          phone: phone,
-        }
+  const handleSignup = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Vérifier si tous les champs sont remplis
+      if (!fullName || !phone || !email || !password) {
+        setError("Veuillez remplir tous les champs");
+        return;
       }
-    });
 
-    if (signUpError) throw signUpError;
+      // Inscription avec Supabase Auth
+      const { error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: fullName,
+            phone: phone,
+            role: role // Ajout du rôle dans les métadonnées
+          }
+        }
+      });
 
-    // Succès - redirection vers la page de connexion
-    alert("Inscription réussie ! Vous pouvez maintenant vous connecter.");
-    router.replace('/(auth)/login');
-  } catch (error) {
-    setError("Erreur lors de l'inscription. Veuillez réessayer.");
-    console.error("Erreur d'inscription:", error);
-  } finally {
-    setLoading(false);
-  }
-};
+      if (signUpError) throw signUpError;
+
+      // Créer explicitement le profil (au cas où le trigger ne fonctionne pas parfaitement)
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user) {
+        await supabase
+          .from('profiles')
+          .upsert({
+            id: user.id,
+            full_name: fullName,
+            phone: phone,
+            role: role
+          });
+      }
+
+      // Succès - redirection vers la page de connexion
+      alert("Inscription réussie ! Vous pouvez maintenant vous connecter.");
+      router.replace('/(auth)/login');
+    } catch (error) {
+      setError("Erreur lors de l'inscription. Veuillez réessayer.");
+      console.error("Erreur d'inscription:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <ScrollView style={styles.container}>
@@ -98,6 +115,19 @@ const handleSignup = async () => {
           value={password}
           onChangeText={setPassword}
         />
+        
+        {/* Sélecteur de rôle */}
+        <View style={styles.pickerContainer}>
+          <Text style={styles.pickerLabel}>Type de compte:</Text>
+          <Picker
+            selectedValue={role}
+            onValueChange={(itemValue) => setRole(itemValue)}
+            style={styles.picker}
+          >
+            <Picker.Item label="Utilisateur" value="user" />
+            <Picker.Item label="Collecteur/Éboueur" value="collector" />
+          </Picker>
+        </View>
         
         <TouchableOpacity 
           style={[styles.button, loading && styles.buttonDisabled]}
@@ -162,6 +192,21 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     fontFamily: 'Inter_400Regular',
     fontSize: 16,
+  },
+  pickerContainer: {
+    marginBottom: 16,
+  },
+  pickerLabel: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 14,
+    color: '#E5E7EB',
+    marginBottom: 8,
+  },
+  picker: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 8,
+    color: '#1F2937',
   },
   button: {
     backgroundColor: '#4CAF50',
