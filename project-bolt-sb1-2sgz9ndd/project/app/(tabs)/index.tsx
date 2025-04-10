@@ -22,11 +22,37 @@ export default function CollectScreen() {
   }, []);
 
   const handleCollectRequest = async () => {
-    if (location) {
-      // Ici nous enverrons la localisation au backend
-      console.log('Demande de collecte envoyée:', location);
+  if (location) {
+    try {
+      // Récupère l'ID de l'utilisateur connecté
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        console.error('Utilisateur non connecté');
+        return;
+      }
+      
+      // Insertion de la demande de collecte
+      const { error } = await supabase
+        .from('collection_requests')
+        .insert({
+          user_id: user.id,
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+          status: 'pending'
+        });
+        
+      if (error) {
+        console.error('Erreur lors de la demande:', error.message);
+      } else {
+        // Afficher un message de succès ou une notification
+        alert('Demande de collecte envoyée avec succès!');
+      }
+    } catch (err) {
+      console.error('Erreur lors de la demande:', err);
     }
-  };
+  }
+};
 
   return (
     <View style={styles.container}>

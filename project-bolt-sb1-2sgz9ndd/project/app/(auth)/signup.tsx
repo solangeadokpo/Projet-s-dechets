@@ -1,59 +1,84 @@
 import { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Image } from 'react-native';
-import { router, Link } from 'expo-router'; // Ajout de Link
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Image, ScrollView } from 'react-native';
+import { router, Link } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 
-export default function Login() {
+export default function Signup() {
+  const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleLogin = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
-
-      if (error) throw error;
-
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .single();
-
-      // Rediriger vers l'interface appropriée selon le rôle
-      if (profile?.role === 'collector') {
-        router.replace('/(collector)');
-      } else {
-        router.replace('/(tabs)');
-      }
-    } catch (error) {
-      setError("Erreur de connexion. Vérifiez vos identifiants.");
-    } finally {
-      setLoading(false);
+const handleSignup = async () => {
+  try {
+    setLoading(true);
+    setError(null);
+    
+    // Vérifier si tous les champs sont remplis
+    if (!fullName || !phone || !email || !password) {
+      setError("Veuillez remplir tous les champs");
+      return;
     }
-  };
+
+    // Inscription avec Supabase Auth (le trigger créera automatiquement le profil)
+    const { error: signUpError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          full_name: fullName,
+          phone: phone,
+        }
+      }
+    });
+
+    if (signUpError) throw signUpError;
+
+    // Succès - redirection vers la page de connexion
+    alert("Inscription réussie ! Vous pouvez maintenant vous connecter.");
+    router.replace('/(auth)/login');
+  } catch (error) {
+    setError("Erreur lors de l'inscription. Veuillez réessayer.");
+    console.error("Erreur d'inscription:", error);
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container}>
       <View style={styles.header}>
         <Image
           source={{ uri: 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=200&h=200&fit=crop' }}
           style={styles.logo}
         />
         <Text style={styles.title}>Azɔ̀ Yìkpɔ́</Text>
-        <Text style={styles.subtitle}>Gestion des déchets</Text>
+        <Text style={styles.subtitle}>Inscription</Text>
       </View>
 
       <View style={styles.form}>
         {error && (
           <Text style={styles.errorText}>{error}</Text>
         )}
+        
+        <TextInput 
+          style={styles.input}
+          placeholder="Nom complet"
+          placeholderTextColor="#6B7280"
+          value={fullName}
+          onChangeText={setFullName}
+        />
+        
+        <TextInput 
+          style={styles.input}
+          placeholder="Numéro de téléphone"
+          placeholderTextColor="#6B7280"
+          keyboardType="phone-pad"
+          value={phone}
+          onChangeText={setPhone}
+        />
         
         <TextInput 
           style={styles.input}
@@ -64,6 +89,7 @@ export default function Login() {
           value={email}
           onChangeText={setEmail}
         />
+        
         <TextInput 
           style={styles.input}
           placeholder="Mot de passe"
@@ -72,27 +98,27 @@ export default function Login() {
           value={password}
           onChangeText={setPassword}
         />
+        
         <TouchableOpacity 
           style={[styles.button, loading && styles.buttonDisabled]}
-          onPress={handleLogin}
+          onPress={handleSignup}
           disabled={loading}
         >
           <Text style={styles.buttonText}>
-            {loading ? 'Connexion...' : 'Se connecter'}
+            {loading ? 'Inscription...' : "S'inscrire"}
           </Text>
         </TouchableOpacity>
         
-        {/* Ajout du lien vers la page d'inscription */}
-        <View style={styles.signupContainer}>
-          <Text style={styles.signupText}>Pas encore de compte?</Text>
-          <Link href="/(auth)/signup" asChild>
+        <View style={styles.loginContainer}>
+          <Text style={styles.loginText}>Déjà un compte?</Text>
+          <Link href="/(auth)/login" asChild>
             <TouchableOpacity>
-              <Text style={styles.signupLink}>S'inscrire</Text>
+              <Text style={styles.loginLink}>Se connecter</Text>
             </TouchableOpacity>
           </Link>
         </View>
       </View>
-    </View>
+    </ScrollView>
   );
 }
 
@@ -100,11 +126,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#2D4B34',
-    padding: 20,
   },
   header: {
-    marginTop: 100,
+    marginTop: 80,
     alignItems: 'center',
+    paddingHorizontal: 20,
   },
   logo: {
     width: 120,
@@ -126,6 +152,8 @@ const styles = StyleSheet.create({
   },
   form: {
     marginTop: 40,
+    paddingHorizontal: 20,
+    paddingBottom: 40,
   },
   input: {
     backgroundColor: '#FFFFFF',
@@ -157,19 +185,18 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 16,
   },
-  // Nouveaux styles pour le lien d'inscription
-  signupContainer: {
+  loginContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     marginTop: 20,
     gap: 5,
   },
-  signupText: {
+  loginText: {
     fontFamily: 'Inter_400Regular',
     fontSize: 14,
     color: '#E5E7EB',
   },
-  signupLink: {
+  loginLink: {
     fontFamily: 'Inter_600SemiBold',
     fontSize: 14,
     color: '#4CAF50',
