@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { MapPin, ClipboardList, User } from 'lucide-react-native';
+import { Home, ClipboardList, User, Truck } from 'lucide-react-native';
 
 export default function CollectorLayout() {
   return (
@@ -22,11 +22,11 @@ export default function CollectorLayout() {
         },
       }}>
       <Tabs.Screen
-        name="index"
+        name="dashboard"
         options={{
-          title: 'Carte',
+          title: 'Tableau de bord',
           tabBarIcon: ({ color, size }) => (
-            <MapPin size={size} color={color} />
+            <Home size={size} color={color} />
           ),
         }}
       />
@@ -48,6 +48,16 @@ export default function CollectorLayout() {
           ),
         }}
       />
+
+              <Tabs.Screen
+          name="tracking"
+          options={{
+            title: 'Suivi',
+            tabBarIcon: ({ color, size }) => (
+              <Truck size={size} color={color} />
+            ),
+          }}
+/>
     </Tabs>
   );
 }

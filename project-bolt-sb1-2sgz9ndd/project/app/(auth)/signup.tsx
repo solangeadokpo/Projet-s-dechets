@@ -32,7 +32,7 @@ export default function Signup() {
           data: {
             full_name: fullName,
             phone: phone,
-            role: role // Ajout du rôle dans les métadonnées
+            role: role
           }
         }
       });
@@ -41,16 +41,18 @@ export default function Signup() {
 
       // Créer explicitement le profil (au cas où le trigger ne fonctionne pas parfaitement)
       const { data: { user } } = await supabase.auth.getUser();
-      
+        console.log(user)
+        
       if (user) {
-        await supabase
-          .from('profiles')
-          .upsert({
+      await supabase
+        .from('profiles')
+        .upsert({
             id: user.id,
+            user_id: user.id,
             full_name: fullName,
             phone: phone,
             role: role
-          });
+        });
       }
 
       // Succès - redirection vers la page de connexion

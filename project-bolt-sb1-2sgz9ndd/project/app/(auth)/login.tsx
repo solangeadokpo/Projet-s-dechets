@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Image } from 'react-native';
-import { router, Link } from 'expo-router'; // Ajout de Link
+import { router, Link } from 'expo-router'; 
 import { supabase } from '@/lib/supabase';
 
 export default function Login() {
@@ -26,9 +26,11 @@ export default function Login() {
         .select('role')
         .single();
 
-      // Rediriger vers l'interface appropriée selon le rôle
+      console.log(profile)
+
       if (profile?.role === 'collector') {
         router.replace('/(collector)');
+        
       } else {
         router.replace('/(tabs)');
       }
