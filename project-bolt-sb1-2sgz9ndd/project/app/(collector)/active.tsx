@@ -9,43 +9,51 @@ export default function ActiveCollectionsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const fetchActiveCollections = useCallback(async () => {
-    try {
-      setLoading(true);
-      
-      // Récupérer l'ID de l'utilisateur (éboueur) connecté
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (user) {
-        // Récupérer les collectes en cours ou acceptées pour cet éboueur
-        const { data, error } = await supabase
-          .from('collection_requests')
-          .select(`
-            *,
-            profiles:user_id (
-              full_name,
-              phone,
-              address
-            )
-          `)
-          .in('status', ['in_progress', 'accepted'])
-          .eq('collector_id', user.id)
-          .order('created_at', { ascending: false });
-          
-        if (error) {
-          console.error('Erreur lors de la récupération des collectes actives:', error);
-        } else {
-          console.log('Collectes actives récupérées:', data?.length || 0);
-          setActiveCollections(data || []);
-        }
-      }
-    } catch (error) {
-      console.error('Erreur:', error);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
+const fetchActiveCollections = async () => {
+  try {
+    setLoading(true);
+
+    // Étape 1 : Récupérer les collectes avec status 'accepted' ou 'in_progress'
+    const { data: collections, error: collectionsError } = await supabase
+      .from('collection_requests')
+      .select('*')
+      .in('status', ['accepted', 'in_progress']);
+
+    if (collectionsError) {
+      console.error('Erreur lors de la récupération des collectes :', collectionsError);
+      return;
     }
-  }, []);
+
+    // Étape 2 : Pour chaque collecte, récupérer les infos utilisateur associées depuis la table 'profiles'
+    const enrichedCollections = await Promise.all(
+      collections.map(async (item) => {
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('full_name, phone')
+          .eq('user_id', item.user_id)
+          .single();
+
+        if (profileError) {
+          console.error(`Erreur pour le user_id ${item.user_id} :`, profileError);
+          return item; // Retourner sans profil si erreur
+        }
+
+        return {
+          ...item,
+          user: profile, // Ajoute les infos du profil dans la collecte
+        };
+      })
+    );
+
+    console.log('Collectes actives enrichies :', enrichedCollections);
+    setActiveCollections(enrichedCollections); // Mettez à jour l'état des collectes actives
+  } catch (err) {
+    console.error('Erreur inattendue :', err);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);

@@ -31,29 +31,48 @@ export default function RequestsScreen() {
 const fetchRequests = async () => {
   try {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('collection_requests')
-      .select(`
-        *,
-        profiles:user_id (
-          full_name,
-          phone
-        )
-      `)
-      .eq('status', 'pending')
-      .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('Erreur lors de la récupération des demandes:', error);
-    } else {
-      setRequests(data || []);
+    // Étape 1 : Récupérer les collectes avec status 'pending'
+    const { data: collections, error: collectionsError } = await supabase
+      .from('collection_requests')
+      .select('*')
+      .eq('status', 'pending');
+
+    if (collectionsError) {
+      console.error('Erreur lors de la récupération des collectes :', collectionsError);
+      return;
     }
+
+    // Étape 2 : Pour chaque collecte, récupérer les infos utilisateur associées depuis la table 'profiles'
+    const enrichedCollections = await Promise.all(
+      collections.map(async (item) => {
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('full_name, phone')
+          .eq('user_id', item.user_id)
+          .single();
+
+        if (profileError) {
+          console.error(`Erreur pour le user_id ${item.user_id} :`, profileError);
+          return item; // Retourner sans profil si erreur
+        }
+
+        return {
+          ...item,
+          user: profile, // ajoute les infos du user dans la collecte
+        };
+      })
+    );
+
+    console.log('Résultat final :', enrichedCollections);
+    setRequests(enrichedCollections); // ou n'importe quel state que tu veux mettre à jour
   } catch (err) {
-    console.error('Exception:', err);
+    console.error('Erreur inattendue :', err);
   } finally {
     setLoading(false);
   }
 };
+
   const handleAccept = async (requestId: string) => {
     const { error } = await supabase
       .from('collection_requests')
