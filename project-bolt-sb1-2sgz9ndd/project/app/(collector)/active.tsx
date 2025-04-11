@@ -1,11 +1,56 @@
-import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Platform, Alert } from 'react-native';
+import { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Platform, Alert, RefreshControl } from 'react-native';
 import { supabase } from '@/lib/supabase';
-import { Check, Clock, MapPin, AlertTriangle } from 'lucide-react-native';
+import { Check, Clock, MapPin, AlertTriangle, Phone, Navigation } from 'lucide-react-native';
+import * as Linking from 'expo-linking';
 
 export default function ActiveCollectionsScreen() {
   const [activeCollections, setActiveCollections] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchActiveCollections = useCallback(async () => {
+    try {
+      setLoading(true);
+      
+      // Récupérer l'ID de l'utilisateur (éboueur) connecté
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user) {
+        // Récupérer les collectes en cours ou acceptées pour cet éboueur
+        const { data, error } = await supabase
+          .from('collection_requests')
+          .select(`
+            *,
+            profiles:user_id (
+              full_name,
+              phone,
+              address
+            )
+          `)
+          .in('status', ['in_progress', 'accepted'])
+          .eq('collector_id', user.id)
+          .order('created_at', { ascending: false });
+          
+        if (error) {
+          console.error('Erreur lors de la récupération des collectes actives:', error);
+        } else {
+          console.log('Collectes actives récupérées:', data?.length || 0);
+          setActiveCollections(data || []);
+        }
+      }
+    } catch (error) {
+      console.error('Erreur:', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchActiveCollections();
+  }, [fetchActiveCollections]);
 
   useEffect(() => {
     fetchActiveCollections();
@@ -24,42 +69,7 @@ export default function ActiveCollectionsScreen() {
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
-
-  const fetchActiveCollections = async () => {
-    try {
-      setLoading(true);
-      
-      // Récupérer l'ID de l'utilisateur (éboueur) connecté
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (user) {
-        // Récupérer les collectes en cours ou acceptées pour cet éboueur
-        const { data, error } = await supabase
-          .from('collection_requests')
-          .select(`
-            *,
-            profiles:user_id (
-              full_name,
-              phone
-            )
-          `)
-          .in('status', ['in_progress', 'accepted'])
-          .eq('collector_id', user.id)
-          .order('created_at', { ascending: false });
-          
-        if (error) {
-          console.error('Erreur lors de la récupération des collectes actives:', error);
-        } else {
-          setActiveCollections(data || []);
-        }
-      }
-    } catch (error) {
-      console.error('Erreur:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [fetchActiveCollections]);
 
   const markAsCompleted = async (requestId) => {
     try {
@@ -80,6 +90,20 @@ export default function ActiveCollectionsScreen() {
     } catch (error) {
       Alert.alert('Erreur', error.message);
     }
+  };
+
+  const openMap = (latitude, longitude) => {
+    const scheme = Platform.OS === 'ios' ? 'maps:' : 'geo:';
+    const url = `${scheme}${latitude},${longitude}`;
+    Linking.openURL(url);
+  };
+
+  const callClient = (phone) => {
+    if (!phone) {
+      Alert.alert('Erreur', 'Aucun numéro de téléphone disponible');
+      return;
+    }
+    Linking.openURL(`tel:${phone}`);
   };
 
   const renderCollectionItem = ({ item }) => {
@@ -110,15 +134,21 @@ export default function ActiveCollectionsScreen() {
         </View>
         
         <View style={styles.cardContact}>
-          <Text style={styles.phoneText}>{item.profiles?.phone || 'Pas de téléphone'}</Text>
+          <TouchableOpacity onPress={() => callClient(item.profiles?.phone)} style={styles.phoneButton}>
+            <Phone size={16} color="#2D4B34" style={styles.phoneIcon} />
+            <Text style={styles.phoneText}>{item.profiles?.phone || 'Pas de téléphone'}</Text>
+          </TouchableOpacity>
         </View>
         
-        <View style={styles.cardLocation}>
+        <TouchableOpacity 
+          style={styles.cardLocation}
+          onPress={() => openMap(item.latitude, item.longitude)}>
           <MapPin size={16} color="#6B7280" style={styles.locationIcon} />
-          <Text style={styles.locationText}>
-            Latitude: {item.latitude.toFixed(6)}, Longitude: {item.longitude.toFixed(6)}
+          <Text style={styles.locationText} numberOfLines={2}>
+            {item.profiles?.address || `Latitude: ${item.latitude.toFixed(6)}, Longitude: ${item.longitude.toFixed(6)}`}
           </Text>
-        </View>
+          <Navigation size={16} color="#2D4B34" />
+        </TouchableOpacity>
         
         <View style={styles.cardActions}>
           <TouchableOpacity 
@@ -138,23 +168,25 @@ export default function ActiveCollectionsScreen() {
         <Text style={styles.title}>Collectes actives</Text>
       </View>
       
-      {loading ? (
-        <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Chargement des collectes...</Text>
-        </View>
-      ) : (
-        <FlatList
-          data={activeCollections}
-          renderItem={renderCollectionItem}
-          keyExtractor={item => item.id}
-          contentContainerStyle={styles.list}
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>Aucune collecte active pour le moment</Text>
-            </View>
-          }
-        />
-      )}
+      <FlatList
+        data={activeCollections}
+        renderItem={renderCollectionItem}
+        keyExtractor={item => item.id}
+        contentContainerStyle={styles.list}
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>Aucune collecte active pour le moment</Text>
+          </View>
+        }
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#4CAF50']}
+            tintColor="#4CAF50"
+          />
+        }
+      />
     </View>
   );
 }
@@ -176,6 +208,7 @@ const styles = StyleSheet.create({
   },
   list: {
     padding: 16,
+    flexGrow: 1,
   },
   card: {
     backgroundColor: '#FFFFFF',
@@ -223,6 +256,13 @@ const styles = StyleSheet.create({
   cardContact: {
     marginBottom: 12,
   },
+  phoneButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  phoneIcon: {
+    marginRight: 8,
+  },
   phoneText: {
     fontSize: 14,
     fontFamily: 'Inter_400Regular',
@@ -262,16 +302,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Inter_600SemiBold',
     marginLeft: 8,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    fontSize: 16,
-    fontFamily: 'Inter_400Regular',
-    color: '#6B7280',
   },
   emptyContainer: {
     padding: 40,

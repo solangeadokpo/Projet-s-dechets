@@ -21,14 +21,14 @@ export default function Login() {
 
       if (error) throw error;
 
-      const { data: profile } = await supabase
+      const { data: profiles } = await supabase
         .from('profiles')
-        .select('role')
+        .select('roles')
         .single();
 
-      console.log(profile)
+      console.log(profiles)
 
-      if (profile?.role === 'collector') {
+      if (profiles?.roles === 'collector') {
         router.replace('/(collector)');
         
       } else {

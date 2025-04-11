@@ -48,17 +48,8 @@ export default function TabLayout() {
           ),
         }}
       />
-          <Tabs.Screen
-          name="tracking"
-          options={{
-            title: 'Suivi',
-            tabBarIcon: ({ color, size }) => (
-              <Truck size={size} color={color} />
-            ),
-          }}
-/>
-    </Tabs>
 
+    </Tabs>
 
   );
 }

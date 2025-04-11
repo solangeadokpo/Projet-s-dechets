@@ -27,8 +27,11 @@ export default function RequestsScreen() {
     };
   }, []);
 
-  const fetchRequests = async () => {
-    const { data } = await supabase
+// Modification pour requests.tsx
+const fetchRequests = async () => {
+  try {
+    setLoading(true);
+    const { data, error } = await supabase
       .from('collection_requests')
       .select(`
         *,
@@ -40,12 +43,17 @@ export default function RequestsScreen() {
       .eq('status', 'pending')
       .order('created_at', { ascending: false });
 
-    if (data) {
-      setRequests(data);
+    if (error) {
+      console.error('Erreur lors de la récupération des demandes:', error);
+    } else {
+      setRequests(data || []);
     }
+  } catch (err) {
+    console.error('Exception:', err);
+  } finally {
     setLoading(false);
-  };
-
+  }
+};
   const handleAccept = async (requestId: string) => {
     const { error } = await supabase
       .from('collection_requests')

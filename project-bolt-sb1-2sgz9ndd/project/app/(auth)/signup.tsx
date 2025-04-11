@@ -32,7 +32,7 @@ export default function Signup() {
           data: {
             full_name: fullName,
             phone: phone,
-            role: role
+            roles: role
           }
         }
       });
@@ -51,7 +51,7 @@ export default function Signup() {
             user_id: user.id,
             full_name: fullName,
             phone: phone,
-            role: role
+            roles: role
         });
       }
 
