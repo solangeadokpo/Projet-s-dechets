@@ -48,8 +48,8 @@ export default function Login() {
           source={{ uri: 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=200&h=200&fit=crop' }}
           style={styles.logo}
         />
-        <Text style={styles.title}>Azɔ̀ Yìkpɔ́</Text>
-        <Text style={styles.subtitle}>Gestion des déchets</Text>
+        <Text style={styles.title}>Clean city</Text>
+        <Text style={styles.subtitle}>Connexion</Text>
       </View>
 
       <View style={styles.form}>

@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { Home, ClipboardList, User, Truck } from 'lucide-react-native';
+import { Home, ClipboardList, User, Truck, CheckCircle, Map } from 'lucide-react-native';
 
 export default function CollectorLayout() {
   return (
@@ -49,7 +49,9 @@ export default function CollectorLayout() {
         }}
       />
 
-              <Tabs.Screen
+      
+
+        <Tabs.Screen
           name="tracking"
           options={{
             title: 'Suivi',
@@ -57,7 +59,25 @@ export default function CollectorLayout() {
               <Truck size={size} color={color} />
             ),
           }}
-/>
+      />
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: 'Carte',
+          tabBarIcon: ({ color, size }) => (
+            <Map  size={size} color={color}/>
+          ),
+        }}
+      />
+       <Tabs.Screen
+        name="active"
+        options={{
+          title: 'Collectes actives',
+          tabBarIcon: ({ color, size }) => (
+            <CheckCircle size={size} color={color} />
+          ),
+        }}
+      />
     </Tabs>
   );
 }

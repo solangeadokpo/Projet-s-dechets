@@ -73,7 +73,7 @@ export default function Signup() {
           source={{ uri: 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=200&h=200&fit=crop' }}
           style={styles.logo}
         />
-        <Text style={styles.title}>Azɔ̀ Yìkpɔ́</Text>
+        <Text style={styles.title}>Clean city</Text>
         <Text style={styles.subtitle}>Inscription</Text>
       </View>
 
@@ -118,18 +118,6 @@ export default function Signup() {
           onChangeText={setPassword}
         />
         
-        {/* Sélecteur de rôle */}
-        <View style={styles.pickerContainer}>
-          <Text style={styles.pickerLabel}>Type de compte:</Text>
-          <Picker
-            selectedValue={role}
-            onValueChange={(itemValue) => setRole(itemValue)}
-            style={styles.picker}
-          >
-            <Picker.Item label="Utilisateur" value="user" />
-            <Picker.Item label="Collecteur/Éboueur" value="collector" />
-          </Picker>
-        </View>
         
         <TouchableOpacity 
           style={[styles.button, loading && styles.buttonDisabled]}

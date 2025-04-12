@@ -1,7 +1,25 @@
 import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Platform, ScrollView, TouchableOpacity } from 'react-native';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  Platform, 
+  ScrollView, 
+  TouchableOpacity,
+  RefreshControl,
+  ActivityIndicator
+} from 'react-native';
 import { supabase } from '@/lib/supabase';
-import { Activity, ArrowUpRight, Trash2, TrendingUp, Award } from 'lucide-react-native';
+import { 
+  Activity, 
+  ArrowUpRight, 
+  Trash2, 
+  TrendingUp, 
+  Award,
+  RefreshCw
+} from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Circle } from 'react-native-svg';
 
 export default function CollectorDashboard() {
   const [stats, setStats] = useState({
@@ -11,11 +29,18 @@ export default function CollectorDashboard() {
     totalWaste: 0
   });
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [userName, setUserName] = useState('');
 
   useEffect(() => {
     fetchDashboardData();
   }, []);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchDashboardData();
+    setRefreshing(false);
+  };
 
   const fetchDashboardData = async () => {
     try {
@@ -77,70 +102,162 @@ export default function CollectorDashboard() {
     }
   };
 
+  // Fonction pour afficher un graphique circulaire de progression
+  const CircularProgress = ({ percent, size = 120, strokeWidth = 12, color = "#4CAF50" }) => {
+    const radius = (size - strokeWidth) / 2;
+    const circumference = radius * 2 * Math.PI;
+    const strokeDashoffset = circumference - (percent / 100) * circumference;
+
+    return (
+      <View style={[styles.progressContainer, { width: size, height: size }]}>
+        <View style={styles.progressBackground}>
+          <Svg width={size} height={size}>
+            <Circle
+              stroke="#E5E7EB"
+              fill="none"
+              cx={size / 2}
+              cy={size / 2}
+              r={radius}
+              strokeWidth={strokeWidth}
+            />
+            <Circle
+              stroke={color}
+              fill="none"
+              cx={size / 2}
+              cy={size / 2}
+              r={radius}
+              strokeWidth={strokeWidth}
+              strokeDasharray={`${circumference} ${circumference}`}
+              strokeDashoffset={strokeDashoffset}
+              strokeLinecap="round"
+            />
+          </Svg>
+        </View>
+        <View style={styles.progressTextContainer}>
+          <Text style={styles.progressPercent}>{percent}%</Text>
+          <Text style={styles.progressLabel}>Complété</Text>
+        </View>
+      </View>
+    );
+  };
+
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      {/* En-tête avec dégradé */}
+      <LinearGradient
+        colors={['#2D4B34', '#3d6b47']}
+        style={styles.header}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+      >
         <Text style={styles.title}>Tableau de bord</Text>
         <Text style={styles.subtitle}>Bienvenue, {userName || 'Collecteur'}</Text>
-      </View>
+      </LinearGradient>
       
-      <ScrollView style={styles.content}>
-        {/* Statistiques principales */}
-        <View style={styles.statsGrid}>
-          <View style={styles.statCard}>
-            <Activity size={24} color="#4CAF50" style={styles.statIcon} />
-            <Text style={styles.statValue}>{stats.totalCollections}</Text>
-            <Text style={styles.statLabel}>Collectes totales</Text>
-          </View>
-          
-          <View style={styles.statCard}>
-            <TrendingUp size={24} color="#FF9800" style={styles.statIcon} />
-            <Text style={styles.statValue}>{stats.completedToday}</Text>
-            <Text style={styles.statLabel}>Complétées aujourd'hui</Text>
-          </View>
-          
-          <View style={styles.statCard}>
-            <Trash2 size={24} color="#2D4B34" style={styles.statIcon} />
-            <Text style={styles.statValue}>{stats.totalWaste}kg</Text>
-            <Text style={styles.statLabel}>Déchets collectés</Text>
-          </View>
-          
-          <View style={styles.statCard}>
-            <Award size={24} color="#9C27B0" style={styles.statIcon} />
-            <Text style={styles.statValue}>{stats.pendingRequests}</Text>
-            <Text style={styles.statLabel}>Demandes en attente</Text>
-          </View>
-        </View>
+      <ScrollView 
+        style={styles.content}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#4CAF50']}
+            tintColor="#4CAF50"
+          />
+        }>
         
-        {/* Performances mensuelles */}
-        <View style={styles.sectionContainer}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Performance mensuelle</Text>
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#4CAF50" />
+            <Text style={styles.loadingText}>Chargement des données...</Text>
           </View>
-          <View style={styles.performanceBar}>
-            <View style={[styles.progressBar, { width: '75%' }]} />
-            <Text style={styles.performanceText}>75% de votre objectif</Text>
-          </View>
-          <Text style={styles.performanceSubtext}>30 collectes sur 40 prévues ce mois</Text>
-        </View>
-        
-        {/* Actions rapides */}
-        <View style={styles.sectionContainer}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Actions rapides</Text>
-          </View>
-          <View style={styles.quickActions}>
-            <TouchableOpacity style={styles.actionButton}>
-              <Text style={styles.actionText}>Voir les demandes</Text>
-              <ArrowUpRight size={16} color="#FFFFFF" />
-            </TouchableOpacity>
+        ) : (
+          <>
+            {/* Statistiques principales avec animation */}
+            <View style={styles.statsContainer}>
+              <View style={styles.statRow}>
+                <TouchableOpacity style={styles.statCard}>
+                  <Activity size={28} color="#4CAF50" style={styles.statIcon} />
+                  <Text style={styles.statValue}>{stats.totalCollections}</Text>
+                  <Text style={styles.statLabel}>Collectes totales</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity style={styles.statCard}>
+                  <TrendingUp size={28} color="#FF9800" style={styles.statIcon} />
+                  <Text style={styles.statValue}>{stats.completedToday}</Text>
+                  <Text style={styles.statLabel}>Aujourd'hui</Text>
+                </TouchableOpacity>
+              </View>
+              
+              <View style={styles.statRow}>
+                <TouchableOpacity style={styles.statCard}>
+                  <Trash2 size={28} color="#2D4B34" style={styles.statIcon} />
+                  <Text style={styles.statValue}>{stats.totalWaste}<Text style={styles.statUnit}>kg</Text></Text>
+                  <Text style={styles.statLabel}>Déchets collectés</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity style={styles.statCard}>
+                  <Award size={28} color="#9C27B0" style={styles.statIcon} />
+                  <Text style={styles.statValue}>{stats.pendingRequests}</Text>
+                  <Text style={styles.statLabel}>Demandes en attente</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
             
-            <TouchableOpacity style={[styles.actionButton, styles.secondaryButton]}>
-              <Text style={styles.secondaryActionText}>Planifier ma journée</Text>
-              <ArrowUpRight size={16} color="#2D4B34" />
-            </TouchableOpacity>
-          </View>
-        </View>
+            {/* Performances mensuelles avec graphique circulaire */}
+            <View style={styles.performanceCard}>
+              <View style={styles.cardHeader}>
+                <Text style={styles.cardTitle}>Performance mensuelle</Text>
+                <TouchableOpacity style={styles.refreshButton} onPress={onRefresh}>
+                  <RefreshCw size={16} color="#6B7280" />
+                </TouchableOpacity>
+              </View>
+              
+              <View style={styles.performanceContent}>
+                <CircularProgress percent={75} />
+                <View style={styles.performanceDetails}>
+                  <Text style={styles.performanceTitle}>Bien joué!</Text>
+                  <Text style={styles.performanceText}>30 collectes sur 40 prévues ce mois</Text>
+                  <View style={styles.goalContainer}>
+                    <View style={styles.goalLabel}>
+                      <View style={[styles.dot, { backgroundColor: '#4CAF50' }]} />
+                      <Text style={styles.goalText}>Complété</Text>
+                    </View>
+                    <Text style={styles.goalValue}>30</Text>
+                  </View>
+                  <View style={styles.goalContainer}>
+                    <View style={styles.goalLabel}>
+                      <View style={[styles.dot, { backgroundColor: '#E5E7EB' }]} />
+                      <Text style={styles.goalText}>Objectif</Text>
+                    </View>
+                    <Text style={styles.goalValue}>40</Text>
+                  </View>
+                </View>
+              </View>
+            </View>
+            
+            {/* Actions rapides */}
+            <View style={styles.actionsCard}>
+              <Text style={styles.cardTitle}>Actions rapides</Text>
+              <View style={styles.actionsList}>
+                <TouchableOpacity style={styles.actionButton}>
+                  <View style={styles.actionContent}>
+                    <Trash2 size={24} color="#FFFFFF" />
+                    <Text style={styles.actionText}>Voir les demandes</Text>
+                  </View>
+                  <ArrowUpRight size={20} color="#FFFFFF" />
+                </TouchableOpacity>
+                
+                <TouchableOpacity style={[styles.actionButton, styles.secondaryButton]}>
+                  <View style={styles.actionContent}>
+                    <Activity size={24} color="#2D4B34" />
+                    <Text style={styles.secondaryActionText}>Planifier ma journée</Text>
+                  </View>
+                  <ArrowUpRight size={20} color="#2D4B34" />
+                </TouchableOpacity>
+              </View>
+            </View>
+          </>
+        )}
       </ScrollView>
     </View>
   );
@@ -149,133 +266,222 @@ export default function CollectorDashboard() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#F9FAFB',
   },
   header: {
-    backgroundColor: '#2D4B34',
     padding: 20,
     paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingBottom: 30,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
   },
   title: {
     color: '#FFFFFF',
-    fontSize: 24,
-    fontFamily: 'Inter_600SemiBold',
+    fontSize: 28,
+    fontFamily: 'Inter_700Bold',
   },
   subtitle: {
     color: '#E5E7EB',
     fontSize: 16,
     fontFamily: 'Inter_400Regular',
-    marginTop: 4,
+    marginTop: 8,
+    opacity: 0.9,
   },
   content: {
     flex: 1,
-    padding: 16,
+    paddingTop: 16,
   },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    marginBottom: 16,
+  loadingContainer: {
+    padding: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  statCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    width: '48%',
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  statIcon: {
-    marginBottom: 8,
-  },
-  statValue: {
-    fontSize: 24,
-    fontFamily: 'Inter_700Bold',
-    color: '#1F2937',
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 12,
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
     fontFamily: 'Inter_400Regular',
     color: '#6B7280',
   },
-  sectionContainer: {
+  statsContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 10,
+  },
+  statRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  statCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
+    borderRadius: 16,
+    padding: 18,
+    width: '48%',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
     elevation: 2,
   },
-  sectionHeader: {
+  statIcon: {
+    marginBottom: 12,
+  },
+  statValue: {
+    fontSize: 28,
+    fontFamily: 'Inter_700Bold',
+    color: '#1F2937',
+    marginBottom: 6,
+  },
+  statUnit: {
+    fontSize: 16,
+    fontFamily: 'Inter_600SemiBold',
+  },
+  statLabel: {
+    fontSize: 14,
+    fontFamily: 'Inter_400Regular',
+    color: '#6B7280',
+  },
+  performanceCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    marginHorizontal: 16,
+    marginBottom: 16,
+    paddingVertical: 20,
+    paddingHorizontal: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
   },
-  sectionTitle: {
-    fontSize: 16,
+  cardTitle: {
+    fontSize: 18,
     fontFamily: 'Inter_600SemiBold',
     color: '#1F2937',
   },
-  performanceBar: {
-    height: 16,
-    backgroundColor: '#E5E7EB',
-    borderRadius: 8,
-    overflow: 'hidden',
-    marginBottom: 8,
+  refreshButton: {
+    padding: 8,
   },
-  progressBar: {
-    height: '100%',
-    backgroundColor: '#4CAF50',
-    borderRadius: 8,
+  performanceContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  performanceText: {
+  progressContainer: {
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  progressBackground: {
     position: 'absolute',
     width: '100%',
-    textAlign: 'center',
-    fontSize: 10,
-    fontFamily: 'Inter_600SemiBold',
-    color: '#FFFFFF',
-    paddingTop: 1,
+    height: '100%',
   },
-  performanceSubtext: {
+  progressTextContainer: {
+    position: 'absolute',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  progressPercent: {
+    fontSize: 24,
+    fontFamily: 'Inter_700Bold',
+    color: '#1F2937',
+  },
+  progressLabel: {
     fontSize: 12,
     fontFamily: 'Inter_400Regular',
     color: '#6B7280',
-    textAlign: 'center',
   },
-  quickActions: {
+  performanceDetails: {
+    flex: 1,
+    marginLeft: 20,
+  },
+  performanceTitle: {
+    fontSize: 18,
+    fontFamily: 'Inter_600SemiBold',
+    color: '#1F2937',
+    marginBottom: 8,
+  },
+  performanceText: {
+    fontSize: 14,
+    fontFamily: 'Inter_400Regular',
+    color: '#4B5563',
+    marginBottom: 16,
+  },
+  goalContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  goalLabel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  dot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginRight: 8,
+  },
+  goalText: {
+    fontSize: 14,
+    fontFamily: 'Inter_400Regular',
+    color: '#6B7280',
+  },
+  goalValue: {
+    fontSize: 14,
+    fontFamily: 'Inter_600SemiBold',
+    color: '#1F2937',
+  },
+  actionsCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    marginHorizontal: 16,
+    marginBottom: 24,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  actionsList: {
+    marginTop: 16,
     gap: 12,
   },
   actionButton: {
     backgroundColor: '#4CAF50',
-    borderRadius: 8,
-    padding: 14,
+    borderRadius: 12,
+    padding: 16,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  actionContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  actionText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontFamily: 'Inter_600SemiBold',
+    marginLeft: 12,
   },
   secondaryButton: {
     backgroundColor: 'transparent',
     borderWidth: 1,
     borderColor: '#2D4B34',
   },
-  actionText: {
-    fontSize: 14,
-    fontFamily: 'Inter_600SemiBold',
-    color: '#FFFFFF',
-  },
   secondaryActionText: {
-    fontSize: 14,
-    fontFamily: 'Inter_600SemiBold',
     color: '#2D4B34',
+    fontSize: 16,
+    fontFamily: 'Inter_600SemiBold',
+    marginLeft: 12,
   },
 });
